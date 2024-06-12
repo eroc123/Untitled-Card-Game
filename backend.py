@@ -28,16 +28,17 @@ class Player():
 
     def setup(self, num_players, next):
         self.next = next
-        self.hand.setup(num_players, next)
+        self.hand.setup(num_players, next, self)
 
 class Hand(list):
     def __init__(self, deck):
         self.deck = deck
         self.name = 'hand'
 
-    def setup(self, num_players, next):
+    def setup(self, num_players, next, player):
         self.num_players = num_players
         self.next = next
+        self.player = player
         for i in range(init_cards[num_players]):
             self.draw()
 
@@ -70,11 +71,13 @@ class Deck(list):
     
 
 class Action:
-    def remove(card, hand, bypass_effect = False) -> None:
+    def remove(card, hand, actor=None, bypass_effect=False) -> None: #remove card from any players hand
         if bypass_effect:
+            card.on_discard(actor)
             hand.remove(card)
         else:
             # check for effects
+            card.on_discard(actor)
             hand.remove(card)
 
     def choose(zone) -> int: 
@@ -125,8 +128,6 @@ class Action:
 # cards #
 ######### 
 
-
-
 class seed_of_life:
     name = 'Seed of Life'
     image = 'url/path'
@@ -142,12 +143,11 @@ class seed_of_life:
     def on_effect(self,):
         pass
 
-    def on_discard(self,):
+    def on_discard(self, card):
         pass
 
     def on_equip(self,):
         pass
-
 
 class arrow:
     name = 'Arrow'
@@ -161,17 +161,16 @@ class arrow:
     def on_play(self,):
         Action.remove(self, self.hand)
         n = Action.choose(self.next.hand)
-        Action.remove(self.next.hand[n], self.next.hand)
+        Action.remove(self.next.hand[n], self.next.hand, actor = self.hand.player)
 
     def on_effect(self,): 
         pass
 
-    def on_discard(self,):
+    def on_discard(self, card):
         pass
 
     def on_equip(self,):
         pass
-
 
 class arrow_health(arrow):
     image = 'url/path'
@@ -179,7 +178,6 @@ class arrow_health(arrow):
     def __init__(self, hand, next):
         self.hand = hand
         self.next = next
-
 
 class arrow_poison:
     name = 'Posion Arrow'
@@ -193,7 +191,7 @@ class arrow_poison:
     def on_play(self,):
         Action.remove(self, self.hand)
         n = Action.choose(self.next.hand)
-        Action.remove(self.next.hand[n], self.next.hand)
+        Action.remove(self.next.hand[n], self.next.hand, actor = self.hand.player)
         Action.add_effect(self, self.next.effect_zone)
 
     def on_effect(self,):
@@ -201,7 +199,7 @@ class arrow_poison:
         Action.remove(n, self)
         Action.remove_effect(self, self.next.effect_zone)
 
-    def on_discard(self,):
+    def on_discard(self, card):
         pass
 
     def on_equip(self,):
@@ -214,7 +212,6 @@ class arrow_poison_health(arrow_poison):
         self.hand = hand
         self.next = next
         
-
 class arrow_fire:
     name = 'Fire Arrow'
     image = 'url/path'
@@ -239,7 +236,7 @@ class arrow_fire:
     def on_effect(self,):
         pass
 
-    def on_discard(self,):
+    def on_discard(self, card):
         pass
 
     def on_equip(self,):
@@ -271,7 +268,7 @@ class arrow_ice:
         Action.skip_action(self.next.hand)
         Action.remove_effect(self)
 
-    def on_discard(self,):
+    def on_discard(self, card):
         pass
 
     def on_equip(self,):
@@ -283,7 +280,6 @@ class arrow_ice_health(arrow_ice):
     def __init__(self, hand, next):
         self.hand = hand
         self.next = next
-
 
 class arrow_electric:
     name = 'Electric Arrow'
@@ -297,15 +293,15 @@ class arrow_electric:
     def on_play(self,):
         Action.remove(self, self.hand)
         n = Action.choose(self.next.hand)
-        Action.remove(self.next.hand[n], self.next.hand)
+        Action.remove(self.next.hand[n], self.next.hand, actor = self.hand.player)
         # goofy method to get next next opponent
         n = Action.choose(self.next.hand[0].next)
-        Action.remove(self.next.hand[n], self.next.hand)
+        Action.remove(self.next.hand[n], self.next.hand, actor = self.hand.player)
             
     def on_effect(self,):
         pass
 
-    def on_discard(self,):
+    def on_discard(self, card):
         pass
 
     def on_equip(self,):
@@ -317,7 +313,6 @@ class arrow_electric_health(arrow_electric):
     def __init__(self, hand, next):
         self.hand = hand
         self.next = next
-
 
 class arrow_wind:
     name = 'Wind Arrow'
@@ -331,12 +326,12 @@ class arrow_wind:
     def on_play(self,):
         Action.remove(self, self.hand)
         n = Action.choose(self.next.hand)
-        Action.remove(self.next.hand[n], self.next.hand, bypass_effect=True)
+        Action.remove(self.next.hand[n], self.next.hand, bypass_effect=True, actor = self.hand.player)
         
     def on_effect(self,):
         pass
 
-    def on_discard(self,):
+    def on_discard(self, card):
         pass
 
     def on_equip(self,):
@@ -366,7 +361,7 @@ class extra_rations:
     def on_effect(self,):
         pass
 
-    def on_discard(self,):
+    def on_discard(self, card):
         pass
 
     def on_equip(self,):
@@ -393,25 +388,25 @@ class spoiled_rations:
         zone = Action.choose_zone(self.next)
         if zone.name == 'hand':
             n = Action.choose(zone)
-            Action.remove(self.zone[n], self.zone)
+            Action.remove(self.zone[n], self.zone, actor=self.hand.player)
         elif zone.name == 'equipment zone':
             n = Action.choose(zone)
-            Action.remove(self.zone[n], self.zone)
+            Action.remove(self.zone[n], self.zone, actor = self.hand.player)
         else:
             Action.throw_error(self, 'Invalid zone selected', 'on_play')
         
     def on_effect(self,):
         pass
 
-    def on_discard(self,):
+    def on_discard(self, card):
         pass
 
     def on_equip(self,):
         pass
 
-class spoiled_rations_health:
+class spoiled_rations_health(spoiled_rations):
     image = 'url/path'
-    health = 0
+    health = 1
     def __init__(self, hand, next):
         self.hand = hand
         self.next = next
@@ -421,6 +416,10 @@ class spied_sucessfully:
     image = 'url/path'
     type = ['utility', 'targetting']
     health = 0
+    def __init__(self, hand, next):
+        self.hand = hand
+        self.next = next
+
     def on_play(self,):
         Action.remove(self, self.hand)
         zone = Action.choose_zone(self.next)
@@ -436,11 +435,18 @@ class spied_sucessfully:
     def on_effect(self,):
         pass
 
-    def on_discard(self,):
+    def on_discard(self, actor):
         pass
 
     def on_equip(self,):
         pass
+
+class spied_sucessfully_health(spied_sucessfully):
+    image = 'url/path'
+    health = 1
+    def __init__(self, hand, next):
+        self.hand = hand
+        self.next = next
 
 # testing code below
 
