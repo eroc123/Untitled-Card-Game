@@ -1,4 +1,4 @@
-## CARDS ##
+from cards import *
 
 #Basic game rules explanation
 '''
@@ -20,31 +20,76 @@ init_cards = {
     6:5,
 }
 
-class Player():
-    def __init__(self, deck):
-        self.hand = Hand(deck)
-        self.effect_zone = EffectZone(deck)
-        self.equipment_zone = EquipmentZone(deck)
+class Game():
+    def __init__(self):
+        '''Sets up a new game environment'''
+        self.room = []
+        self.players = []
+        self.deck = Deck()
+        self.current_player_index = 0
 
-    def setup(self, num_players, next):
-        self.next = next
-        self.hand.setup(num_players, next, self)
+    def add_player(self, player):
+        '''
+        When adding new players, first create a player using the player class
+
+        Then call this function, passing the new player object as a variable
+        '''
+        
+        self.players.append(player)
+        self.room.append(player)
+        print(len(self.players))
+    
+    def start_game(self):
+        '''Call this function when the game is ready to start'''
+        for player in self.players:
+            player.setup()
+        while True:
+            current_player = self.players[self.current_player_index]
+            current_player.on_turn()
+            self.current_player_index += 1
+            if self.current_player_index == len(self.players):
+                self.current_player_index = 0
+            
+    def get_current_player(self):
+        '''To get which player is currently performing actions'''
+        return self.players[self.current_player_index]
+
+    def get_next_player(self):
+        next_index = self.current_player_index + 1
+        if next_index == len(self.players):
+            next_index = 0
+        return self.players[next_index]
+
+class Player():
+    def __init__(self, game):
+        self.game = game
+        self.hand = Hand(self)
+        self.effect_zone = EffectZone(self)
+        self.equipment_zone = EquipmentZone(self)
+
+    def on_turn(self):
+        prettyprint(self.hand)
+        choice = int(input(f'choose from deck above\nCard number : '))
+        self.hand[choice].on_play()
+
+
+    def setup(self):
+        self.hand.setup()
 
 class Hand(list):
-    def __init__(self, deck):
-        self.deck = deck
+    def __init__(self, player):
+        self.game = player.game
+        self.player = player
         self.name = 'hand'
 
-    def setup(self, num_players, next, player):
-        self.num_players = num_players
-        self.next = next
-        self.player = player
-        for i in range(init_cards[num_players]):
+    def setup(self):
+        num_players = len(self.game.players)
+        for _ in range(init_cards[num_players]):
             self.draw()
 
     def draw(self,):
-        card = self.deck.draw() #self.deck is a class - draws card from deck
-        self.append(card(self, self.next)) #initialize each card object (self is the hand of the player who drew it and self.next is the next player)
+        card = self.game.deck.draw() #self.deck is a class - draws card from deck
+        self.append(card(self)) #initialize each card object (self is the hand of the player who drew it and self.next is the next player)
 
 class EffectZone(list):
     def __init__(self, deck):
@@ -59,9 +104,14 @@ class EquipmentZone(list):
 class Deck(list):
     def __init__(self,):
         # fill up deck, this is just random numbers not the final
-        [self.append(seed_of_life) for _ in range(6)]
+        [self.append(seed_of_life) for _ in range(4)]
         [self.append(arrow) for _ in range(13)]
-        [self.append(arrow_health) for _ in range(2)]
+        # for health varients, e.g.
+        card = seed_of_life
+        card.health += 1
+        card.image += '_health' # etc 
+        self.append(card)
+        
         
     def draw(self,):
         card_index = random.randint(0,len(self)-1)
@@ -70,401 +120,21 @@ class Deck(list):
         return card
     
 
-class Action:
-    def remove(card, hand, actor=None, bypass_effect=False) -> None: #remove card from any players hand
-        if bypass_effect:
-            card.on_discard(actor)
-            hand.remove(card)
-        else:
-            # check for effects
-            card.on_discard(actor)
-            hand.remove(card)
 
-    def choose(zone) -> int: 
-        # idk let player choose a card from a zone
-        n = 1
-        return n
-    
-    def choose_zone(player):
-        # idk let player choose a zone from a player
-        n = 1
-        zones = [player.hand, player.effect_zone, player.equipment_zone]
-        return zones[n]
-    
-    def add_effect(card, effect_zone):
-        effect_zone.append(card)
-
-    def remove_effect(card, effect_zone):
-        effect_zone.remove(card)
-
-    def skip_action(player):
-        # skip player's next turn
-        pass
-
-    def draw_card(hand):
-        hand.draw()
-
-    def move(card, origin, target):
-        target.append(card)
-        origin.remove(card)
-
-    def throw_error(card, message, action):
-        print(message)
-        if action == 'on_play':
-            card.on_play()
-        elif action == 'on_effect':
-            card.on_effect()
-        elif action == 'on_discard':
-            card.on_discard()
-        elif action == 'on_equip':
-            card.on_equip()
-        else:
-            print('you did WHAT?')
-            print(f'action : {action}')
-        
-
-
-#########
-# cards #
-######### 
-
-class seed_of_life:
-    name = 'Seed of Life'
-    image = 'url/path'
-    type = ['basic']
-    health = 1
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next.hand
-        
-    def on_play(self,):
-        Action.remove(self, self.hand)
-
-    def on_effect(self,):
-        pass
-
-    def on_discard(self, card):
-        pass
-
-    def on_equip(self,):
-        pass
-
-class arrow:
-    name = 'Arrow'
-    image = 'url/path'
-    type = ['basic', 'targeting']
-    health = 0
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-    def on_play(self,):
-        Action.remove(self, self.hand)
-        n = Action.choose(self.next.hand)
-        Action.remove(self.next.hand[n], self.next.hand, actor = self.hand.player)
-
-    def on_effect(self,): 
-        pass
-
-    def on_discard(self, card):
-        pass
-
-    def on_equip(self,):
-        pass
-
-class arrow_health(arrow):
-    image = 'url/path'
-    health = 1
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-class arrow_poison:
-    name = 'Posion Arrow'
-    image = 'url/path'
-    type = ['basic', 'targeting']
-    health = 0
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-    def on_play(self,):
-        Action.remove(self, self.hand)
-        n = Action.choose(self.next.hand)
-        Action.remove(self.next.hand[n], self.next.hand, actor = self.hand.player)
-        Action.add_effect(self, self.next.effect_zone)
-
-    def on_effect(self,):
-        n = Action.choose(self)
-        Action.remove(n, self)
-        Action.remove_effect(self, self.next.effect_zone)
-
-    def on_discard(self, card):
-        pass
-
-    def on_equip(self,):
-        pass
-
-class arrow_poison_health(arrow_poison):
-    image = 'url/path'
-    health = 1
-    def __init__(self, hand: Hand, next: Hand):
-        self.hand = hand
-        self.next = next
-        
-class arrow_fire:
-    name = 'Fire Arrow'
-    image = 'url/path'
-    type = ['basic', 'targeting']
-    health = 0
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-    def on_play(self,):
-        Action.remove(self, self.hand)
-        n = Action.choose(self.next.hand)
-        card = self.next.hand[n]
-        if card.health == 1:
-            # Choose another card
-            n1 = Action.choose(self.next.hand)
-            Action.remove(n, self.next.hand)
-            Action.remove(n1, self.next.hand)
-        else:
-            Action.remove(n, self.next.hand)
-
-    def on_effect(self,):
-        pass
-
-    def on_discard(self, card):
-        pass
-
-    def on_equip(self,):
-        pass
-
-class arrow_fire_health(arrow_fire):
-    image = 'url/path'
-    health = 1
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-class arrow_ice:
-    name = 'Ice Arrow'
-    image = 'url/path'
-    type = ['basic', 'targeting']
-    health = 0
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-    def on_play(self,):
-        Action.remove(self, self.hand)
-        n = Action.choose(self.next.hand)
-        Action.remove(n, self.next.hand)
-        Action.add_effect(self, self.next.effect_zone)
-            
-    def on_effect(self,):
-        Action.skip_action(self.next.hand)
-        Action.remove_effect(self)
-
-    def on_discard(self, card):
-        pass
-
-    def on_equip(self,):
-        pass
-
-class arrow_ice_health(arrow_ice):
-    image = 'url/path'
-    health = 1
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-class arrow_electric:
-    name = 'Electric Arrow'
-    image = 'url/path'
-    type = ['basic', 'targeting']
-    health = 0
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-    def on_play(self,):
-        Action.remove(self, self.hand)
-        n = Action.choose(self.next.hand)
-        Action.remove(self.next.hand[n], self.next.hand, actor = self.hand.player)
-        # goofy method to get next next opponent
-        n = Action.choose(self.next.hand[0].next)
-        Action.remove(self.next.hand[n], self.next.hand, actor = self.hand.player)
-            
-    def on_effect(self,):
-        pass
-
-    def on_discard(self, card):
-        pass
-
-    def on_equip(self,):
-        pass
-
-class arrow_electric_health(arrow_electric):
-    image = 'url/path'
-    health = 1
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-class arrow_wind:
-    name = 'Wind Arrow'
-    image = 'url/path'
-    type = ['basic', 'targeting']
-    health = 0
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-    def on_play(self,):
-        Action.remove(self, self.hand)
-        n = Action.choose(self.next.hand)
-        Action.remove(self.next.hand[n], self.next.hand, bypass_effect=True, actor = self.hand.player)
-        
-    def on_effect(self,):
-        pass
-
-    def on_discard(self, card):
-        pass
-
-    def on_equip(self,):
-        pass
-
-class arrow_wind_health(arrow_wind):
-    image = 'url/path'
-    health = 1
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-class extra_rations:
-    name = 'Extra Rations'
-    image = 'url/path'
-    type = ['utility']
-    health = 0
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-    def on_play(self,):
-        Action.remove(self, self.hand)
-        Action.draw_card(self.hand)
-        Action.draw_card(self.hand)
-        
-    def on_effect(self,):
-        pass
-
-    def on_discard(self, card):
-        pass
-
-    def on_equip(self,):
-        pass
-
-class extra_rations_health(extra_rations):
-    image = 'url/path'
-    health = 1
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-class spoiled_rations:
-    name = 'Spoiled Rations'
-    image = 'url/path'
-    type = ['utility', 'targetting']
-    health = 0
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-    def on_play(self,):
-        Action.remove(self, self.hand)
-        zone = Action.choose_zone(self.next)
-        if zone.name == 'hand':
-            n = Action.choose(zone)
-            Action.remove(self.zone[n], self.zone, actor=self.hand.player)
-        elif zone.name == 'equipment zone':
-            n = Action.choose(zone)
-            Action.remove(self.zone[n], self.zone, actor = self.hand.player)
-        else:
-            Action.throw_error(self, 'Invalid zone selected', 'on_play')
-        
-    def on_effect(self,):
-        pass
-
-    def on_discard(self, card):
-        pass
-
-    def on_equip(self,):
-        pass
-
-class spoiled_rations_health(spoiled_rations):
-    image = 'url/path'
-    health = 1
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-class spied_sucessfully:
-    name = 'Spied sucessfully'
-    image = 'url/path'
-    type = ['utility', 'targetting']
-    health = 0
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
-
-    def on_play(self,):
-        Action.remove(self, self.hand)
-        zone = Action.choose_zone(self.next)
-        if zone.name == 'hand':
-            n = Action.choose(zone)
-            Action.move(self.zone[n], self.zone, self.hand)
-        elif zone.name == 'equipment zone':
-            n = Action.choose(zone)
-            Action.move(self.zone[n], self.zone, self.hand)
-        else:
-            Action.throw_error(self, 'Invalid zone selected', 'on_play')
-        
-    def on_effect(self,):
-        pass
-
-    def on_discard(self, actor):
-        pass
-
-    def on_equip(self,):
-        pass
-
-class spied_sucessfully_health(spied_sucessfully):
-    image = 'url/path'
-    health = 1
-    def __init__(self, hand, next):
-        self.hand = hand
-        self.next = next
 
 # testing code below
 
 def prettyprint(l):
-    for i in l.hand:
+    for i in l:
         print(i.name, end=', ')
     print()
 
 
 if __name__ == '__main__':
-    c = Deck()
-    d1 = Player(c)
-    d2 = Player(c)
-    d1.setup(2, d2)
-    d2.setup(2, d1)
-    prettyprint(d1)
-    prettyprint(d2)
-    d1.hand[5].on_play()
-    prettyprint(d1)
-    prettyprint(d2)
+    new_game = Game()
+    player1 = Player(new_game)
+    player2 = Player(new_game)
+    new_game.add_player(player1)
+    new_game.add_player(player2)
+    new_game.start_game()
     
