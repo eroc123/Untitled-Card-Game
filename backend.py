@@ -1,5 +1,5 @@
 from cards import *
-
+import time
 #Basic game rules explanation
 '''
 Card types:
@@ -24,10 +24,10 @@ class Game():
     def __init__(self):
         '''Sets up a new game environment'''
         self.room = []
-        self.players = []
-        self.deck = Deck()
-        self.current_player_index = 0
-
+        self.players = {}
+        self.deck = Deck(self)
+        self.discardPile = DiscardedPile(self)
+        self.current_player_index = 1
     def add_player(self, player):
         '''
         When adding new players, first create a player using the player class
@@ -35,46 +35,60 @@ class Game():
         Then call this function, passing the new player object as a variable
         '''
         
-        self.players.append(player)
+        self.players[len(self.players)+1] = player
         self.room.append(player)
-        print(len(self.players))
+   
     
     def start_game(self):
         '''Call this function when the game is ready to start'''
-        for player in self.players:
+        for player in self.players.values():
             player.setup()
         while True:
             current_player = self.players[self.current_player_index]
-            current_player.on_turn()
-            self.current_player_index += 1
-            if self.current_player_index == len(self.players):
-                self.current_player_index = 0
+            if len(self.deck.getDeck()) == 0:
+                
+                self.deck.refillDeck(self.discardPile.getDeck())
+                self.deck.shuffleDeck()
+                
+
+            print("-----\nPlayer number {}'s turn\n-----".format(str(self.current_player_index)))
             
+            current_player.on_turn()
+            
+            
+            self.checkEliminations()
+            #win condition - all other players eliminated
+            if len(self.players) == 1:
+                print('Game over! Player {} has won the game!'.format(self.players.keys()[0]))
+            
+            self.current_player_index += 1
+            if self.current_player_index > len(self.players):
+                self.current_player_index = 1
+    def checkEliminations(self):
+        playersToEliminate = []
+        for playerIndex, player in self.players.items():
+                if player.health == 0:
+                    print("Player {} has been eliminated!".format(playerIndex)) #announce a players death
+                    playersToEliminate.append(playerIndex)
+        for playerIndex in playersToEliminate:
+            del self.players[playerIndex]
     def get_current_player(self):
         '''To get which player is currently performing actions'''
         return self.players[self.current_player_index]
 
     def get_next_player(self):
         next_index = self.current_player_index + 1
-        if next_index == len(self.players):
-            next_index = 0
+        if next_index > len(self.players):
+            next_index = 1
         return self.players[next_index]
 
 class Player():
-    def __init__(self, game):
-        self.game = game
-        self.hand = Hand(self)
-        self.effect_zone = EffectZone(self)
-        self.equipment_zone = EquipmentZone(self)
-
-    def on_turn(self):
-        prettyprint(self.hand)
-        choice = int(input(f'choose from deck above\nCard number : '))
-        self.hand[choice].on_play()
-
-
-    def setup(self):
-        self.hand.setup()
+    def __init__(self, deck, num_players):
+        self.hand = Hand(deck) #handd of a player 
+        self.effect_zone = EffectZone(deck)
+        self.equipment_zone = EquipmentZone(deck)
+        #hands out cards to each players (dependent on number of players)
+        self.hand.setup(num_players, None, self)
 
 class Hand(list):
     def __init__(self, player):
@@ -82,59 +96,128 @@ class Hand(list):
         self.player = player
         self.name = 'hand'
 
-    def setup(self):
-        num_players = len(self.game.players)
-        for _ in range(init_cards[num_players]):
+    def setup(self, num_players, target, player):
+        self.num_players = num_players
+        self.target = target
+        self.player = player
+        for i in range(init_cards[num_players]):
             self.draw()
 
     def draw(self,):
-        card = self.game.deck.draw() #self.deck is a class - draws card from deck
+        card = self.deck.draw() #self.deck is a class - draws card from deck
         self.append(card(self)) #initialize each card object (self is the hand of the player who drew it and self.next is the next player)
 
 class EffectZone(list):
     def __init__(self, deck):
         self.deck = deck
-        self.name = 'effect zone'
+        self.name = 'effect_zone'
     
 class EquipmentZone(list):
     def __init__(self, deck):
         self.deck = deck
-        self.name = 'equipment zone'
+        self.name = 'equipment_zone'
         
 class Deck(list):
-    def __init__(self,):
-        # fill up deck, this is just random numbers not the final
-        [self.append(seed_of_life) for _ in range(4)]
-        [self.append(arrow) for _ in range(13)]
-        # for health varients, e.g.
-        card = seed_of_life
-        card.health += 1
-        card.image += '_health' # etc 
-        self.append(card)
-        
-        
+    def __init__(self, cards): #cards is a list of all cards to fill deck with
+        # fill up deck using list of cards provided
+        super().__init__(cards)
+
+    def shuffle(self,): #shuffles the deck
+        random.shuffle(self)
     def draw(self,):
+        print(len(self)-1)
         card_index = random.randint(0,len(self)-1)
         card = self[card_index]
         self.pop(card_index)
         return card
+    def discard(self, card): #discarded cards immediately placed back in the deck in a random position
+        self.insert(random.randint(0,(len(self)-1)), card)
     
 
 
-
-# testing code below
-
-def prettyprint(l):
-    for i in l:
-        print(i.name, end=', ')
-    print()
+#actual meat of the code
 
 
+#target is a player object 
+
+
+class GameLoop(): #top level class
+    
+    def __init__(self, number_of_players) -> None: #sets up game and players and stuff
+        self.deck = Deck([seed_of_life for i in range(number_of_players)] + [arrow for i in range(15)] + [arrow_wind_health for i in range(10)]) #create a random deck
+        self.playerList = [Player(self.deck, number_of_players) for _ in range(number_of_players)] 
+        self.turn = 0 
+        self.currentPlayer = self.playerList[self.turn] #stores the player class of whoevers turn it is.
+    def play(self, target):
+        
+        self.currentPlayer.hand[5].on_play(target) #plays a card
+    
+    def nextTurn(self,):
+        self.turn += 1
+        self.currentPlayer = self.playerList[self.turn]
+
+
+
+
+
+class Action(): #second in the hiearchy, child class of gameloop
+    def discard(self,card, hand, actor=None, bypass_effect=False) -> None: #remove card from any players hand
+        if bypass_effect:
+            card.on_discard(actor) #run the card discard code block
+            
+             #remove card from hand and place in discard pile
+            hand.remove(card)
+        else:
+            # check for effects
+            print(card)
+            card.on_discard(actor) #remove card from hand and place in discard pile
+            
+            hand.remove(card)
+
+    def choose(self, target) -> int: 
+        # choose card to remove from player
+        n = input("Pick one of the opponents' {} cards.".format(len(target.hand)))
+        return int(n)
+    
+    def choose_zone(player):
+        # idk let player choose a zone from a player
+        n = 1
+        zones = [player.hand, player.effect_zone, player.equipment_zone]
+        return zones[n]
+    
+    def add_effect(card, effect_zone):
+        effect_zone.append(card)
+
+    def remove_effect(card, effect_zone):
+        effect_zone.remove(card)
+
+    def skip_self(player):
+        # skip player's next turn
+        pass
+
+    def draw_card(hand):
+        hand.draw()
+
+    def move(card, origin, target):
+        target.append(card)
+        origin.remove(card)
+
+    def throw_error(card, message, self):
+        print(message)
+        if self == 'on_play':
+            card.on_play()
+        elif self == 'on_effect':
+            card.on_effect()
+        elif self == 'on_discard':
+            card.on_discard()
+        elif self == 'on_equip':
+            card.on_equip()
+        else:
+            print('you did WHAT?')
+            print(f'self : {self}')
+
+
+    
 if __name__ == '__main__':
-    new_game = Game()
-    player1 = Player(new_game)
-    player2 = Player(new_game)
-    new_game.add_player(player1)
-    new_game.add_player(player2)
-    new_game.start_game()
-    
+    game = GameLoop(2)
+    game.play( game.playerList[1])
