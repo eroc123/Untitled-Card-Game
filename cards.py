@@ -243,6 +243,12 @@ class arrow_electric:
     def on_equip(self,):
         pass
 
+class arrow_electric_health(arrow_electric):
+    image = 'url/path'
+    health = 1
+    def __init__(self, hand, next):
+        self.hand = hand
+        next_player = next
 
 class arrow_wind:
     name = 'Wind Arrow'
