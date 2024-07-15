@@ -1,3 +1,6 @@
+# NOTICE:
+# Do to some thinking error, I have no clue in the card if self.player is actually the player or just a hand
+# if it is just the hand, rewrite all variable names so that it matches what it is
 
 def prettyprint(l):
     for i in l:
@@ -25,7 +28,7 @@ class Action:
             target.hand.remove(card)
     def drawCard(actor):
         actor.draw()
-    def chooseCard(target, zone) -> int: 
+    def chooseCard(actor, target, zone) -> int: 
         '''
         Gets actor to choose a card from the zone
         
@@ -42,7 +45,7 @@ class Action:
         choice = input('Choose a target from these players: {}'.format(prettyprint(actor.game.players))) #choice is integer determining index of chosen target
         return int(choice)-1
 
-    def choose_zone(target):
+    def choose_zone(target, actor):
         # idk let player choose a zone from a player
         zone = input("Choose a zone (hand/equipment)") #return as string
         if zone == 'hand':
@@ -50,13 +53,13 @@ class Action:
         elif zone == 'equipment':
             return target.equipment_zone
          
-    def add_effect(target, card):
+    def add_effect(actor, target, card):
         target.effect_zone.append(card)
 
-    def remove_effect(target, card):
+    def remove_effect(actor, target, card):
         target.effect_zone.remove(card)
 
-    def skip_action(target, actor):
+    def skip_action(actor, target):
         # skip player's next turn
         pass
     def checkRetaliation(target,actor):
@@ -116,7 +119,7 @@ class arrow:
     def on_play(self,):
         Action.remove(target=self.player,actor=self.player, card=self)
         next_player = self.player.game.get_next_player()
-        n = Action.chooseCard(target=self.player, zone='hand')
+        n = Action.chooseCard(target=self.player, actor=self.player, zone='hand')
         Action.remove(target=next_player,actor=self.player,card=next_player.hand[n])
         return True
     def on_effect(self,): 
@@ -139,15 +142,15 @@ class arrow_poison:
     def on_play(self,):
         Action.remove(target=self.player,actor=self.player, card=self)
         next_player = self.player.game.get_next_player()
-        n = Action.chooseCard(target=next_player, zone='hand')
+        n = Action.chooseCard(target=next_player,actor=self.player, zone='hand')
         Action.remove(target=next_player,actor=self.player,card=next_player.hand[n])
-        Action.add_effect(target=next_player, action=self.player, card=self)
+        Action.add_effect(target=next_player, actor=self.player, card=self)
         self.player = self.next_player #change ownership of card to whoever recieved the effect
         return True
     def on_effect(self, ):
         n = Action.chooseCard(target=self.player, zone=self.player.hand)
         Action.remove(target=self.player, actor=self.player, card=self.player.hand[n])
-        Action.remove_effect(target=self.player, card=self)
+        Action.remove_effect(target=self.player, actor=self.player, card=self)
         
     def on_discard(self, card):
         pass
@@ -166,7 +169,7 @@ class arrow_fire:
     def on_play(self,):
         Action.remove(target=self.player,actor=self.player, card=self)
         next_player = self.player.game.get_next_player()
-        n = Action.chooseCard(target=next_player, zone='hand')
+        n = Action.chooseCard(target=next_player,actor=self.player, zone='hand')
         if next_player.hand[n].health == 1:
             # Choose another card
             n1 = Action.chooseCard(target=next_player, zone='hand')
@@ -195,14 +198,14 @@ class arrow_ice:
     def on_play(self,):
         Action.remove(target=self.player,actor=self.player, card=self)
         next_player = self.player.game.get_next_player()
-        n = Action.chooseCard(target=next_player, zone='hand')
+        n = Action.chooseCard(target=next_player,actor=self.player, zone='hand')
         Action.remove(target=next_player,actor=self.player,card=next_player.hand[n])
         
         Action.add_effect(target=next_player,  card=self)
         self.player = next_player #change ownership of card to whoever recieved the effect
         return True
     def on_effect(self,):
-        Action.remove_effect(target=self.player, card=self)
+        Action.remove_effect(target=self.player,actor=self.player, card=self)
         return 'skip' #skip turn
     def on_discard(self, card):
         pass
@@ -222,15 +225,15 @@ class arrow_electric:
     def on_play(self,):
         Action.remove(target=self.player,actor=self.player, card=self)
         next_player = self.player.game.get_next_player() #get next two opponents 
-        n = Action.chooseCard(target=next_player, zone='hand')
+        n = Action.chooseCard(target=next_player,actor=self.player, zone='hand')
         Action.remove(target=next_player,actor=self.player,card=next_player.hand[n])
 
         if len(self.player.game.players) > 2: #if there are more than 2 opponents
             next_next_player = next_player.game.get_next_player() 
-            n1 = Action.chooseCard(target=next_next_player, zone='hand')
-            Action.remove(next_next_player.hand[n1], next_next_player.hand, actor = self.player)
+            n1 = Action.chooseCard(target=next_next_player,actor=self.player, zone='hand')
+            Action.remove(card=next_next_player.hand[n1], target =next_next_player.hand, actor = self.player)
         else:
-            n = Action.chooseCard(target=next_player, zone='hand') #else remove a second card from opponent
+            n = Action.chooseCard(target=next_player,actor=self.player, zone='hand') #else remove a second card from opponent
             Action.remove(next_player.hand[n], next_player.hand, actor = self.player)
         return True
             
@@ -262,7 +265,7 @@ class arrow_wind:
     def on_play(self,): #basically same as basic except bypass all effects
         Action.remove(target=self.player,actor=self.player, card=self)
         next_player = self.player.game.get_next_player()
-        n = Action.chooseCard(target=self.player, zone='hand')
+        n = Action.chooseCard(target=self.player,actor=self.player, zone='hand')
         Action.remove(target=next_player,actor=self.player,card=next_player.hand[n], bypass_effect=True)
         return True
     def on_effect(self,):
@@ -320,7 +323,7 @@ class spoiled_rations:
         else:
             Action.remove(target=self.player,actor=self.player, card=self)
             next_player = self.player.game.get_next_player()
-            zone = Action.choose_zone(target=next_player)
+            zone = Action.choose_zone(target=next_player,actor=self.player)
 
             n = Action.chooseCard(target=next_player, zone=zone.name)
             RetaliationPlayed = Action.checkRetaliation(target=next_player,actor=self.player)
@@ -360,8 +363,8 @@ class spied_sucessfully:
         else:
             Action.remove(target=self.player,actor=self.player, card=self)
             next_player = self.player.game.get_next_player()
-            zone = Action.choose_zone(target=next_player)
-            n = Action.chooseCard(target=next_player, zone=zone.name)
+            zone = Action.choose_zone(target=next_player,actor=self.player)
+            n = Action.chooseCard(target=next_player,actor=self.player, zone=zone.name)
 
             
             Action.move(target=next_player,actor=self.player,card=zone[n])
@@ -419,15 +422,16 @@ class spying_failed:
         pass
 
 class retaliation:
-    name = 'Spying Failed'
+    name = 'Retaliation'
     image = 'url/path'
-    type = ['utility', 'targetting']
+    type = ['utility']
     health = 0
     def __init__(self, hand):
         self.player = hand
 
     def on_play(self,):
         Action.remove(target=self.player,actor=self.player, card=self)
+        # undo previous action
 
     def on_effect(self,):
         pass
@@ -438,5 +442,25 @@ class retaliation:
     def on_equip(self,):
         pass
 
+class reconnaissance:
+    name = 'Reconnaissance'
+    image = 'url/path'
+    type = ['utility']
+    health = 0
+    def __init__(self, hand):
+        self.player = hand
 
+    def on_play(self,):
+        Action.drawCard(actor=self.player)
+        target = Action.chooseTarget(actor=self.player)
+        Action.add_effect(target=target, actor=self.player, card=self)
+
+    def on_effect(self,):
+        pass
+
+    def on_discard(self, actor):
+        pass
+
+    def on_equip(self,):
+        pass
 
