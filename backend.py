@@ -82,6 +82,10 @@ class Game():
             next_index = 1
         return self.players[next_index]
 
+
+class DiscardedPile():
+    pass
+
 class Player():
     def __init__(self, deck, num_players):
         self.hand = Hand(deck) #handd of a player 
@@ -144,7 +148,7 @@ class Deck(list):
 class GameLoop(): #top level class
     
     def __init__(self, number_of_players) -> None: #sets up game and players and stuff
-        self.deck = Deck([seed_of_life for i in range(number_of_players)] + [arrow for i in range(15)] + [arrow_wind_health for i in range(10)]) #create a random deck
+        self.deck = Deck([seed_of_life for i in range(number_of_players)] + [arrow for i in range(15)] + [arrow_wind for i in range(10)]) #create a random deck
         self.playerList = [Player(self.deck, number_of_players) for _ in range(number_of_players)] 
         self.turn = 0 
         self.currentPlayer = self.playerList[self.turn] #stores the player class of whoevers turn it is.
@@ -155,67 +159,6 @@ class GameLoop(): #top level class
     def nextTurn(self,):
         self.turn += 1
         self.currentPlayer = self.playerList[self.turn]
-
-
-
-
-
-class Action(): #second in the hiearchy, child class of gameloop
-    def discard(self,card, hand, actor=None, bypass_effect=False) -> None: #remove card from any players hand
-        if bypass_effect:
-            card.on_discard(actor) #run the card discard code block
-            
-             #remove card from hand and place in discard pile
-            hand.remove(card)
-        else:
-            # check for effects
-            print(card)
-            card.on_discard(actor) #remove card from hand and place in discard pile
-            
-            hand.remove(card)
-
-    def choose(self, target) -> int: 
-        # choose card to remove from player
-        n = input("Pick one of the opponents' {} cards.".format(len(target.hand)))
-        return int(n)
-    
-    def choose_zone(player):
-        # idk let player choose a zone from a player
-        n = 1
-        zones = [player.hand, player.effect_zone, player.equipment_zone]
-        return zones[n]
-    
-    def add_effect(card, effect_zone):
-        effect_zone.append(card)
-
-    def remove_effect(card, effect_zone):
-        effect_zone.remove(card)
-
-    def skip_self(player):
-        # skip player's next turn
-        pass
-
-    def draw_card(hand):
-        hand.draw()
-
-    def move(card, origin, target):
-        target.append(card)
-        origin.remove(card)
-
-    def throw_error(card, message, self):
-        print(message)
-        if self == 'on_play':
-            card.on_play()
-        elif self == 'on_effect':
-            card.on_effect()
-        elif self == 'on_discard':
-            card.on_discard()
-        elif self == 'on_equip':
-            card.on_equip()
-        else:
-            print('you did WHAT?')
-            print(f'self : {self}')
-
 
     
 if __name__ == '__main__':
