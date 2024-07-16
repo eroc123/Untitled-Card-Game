@@ -5,7 +5,7 @@ import socket
 
 while True:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect(('thinkpad-t14s.tailc3214.ts.net', 10000))
+    s.connect(('127.0.0.1', 10000))
     data = input()
     if data == '':
         s.close()
