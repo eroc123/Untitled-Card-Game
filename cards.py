@@ -1,6 +1,7 @@
 # NOTICE:
-# Do to some thinking error, I have no clue in the card if self.player is actually the player or just a hand
-# if it is just the hand, rewrite all variable names so that it matches what it is
+# Do to some thinking error, I think the card's self.player is sopposed to be self.hand
+# Unfortuantly I am not sure and i dont want to break anything
+# - Eric
 
 def prettyprint(l):
     for i in l:
@@ -62,8 +63,13 @@ class Action:
     def skip_action(actor, target):
         # skip player's next turn
         pass
-    def checkRetaliation(target,actor):
-        pass #check whether target has a retaliation card and ask them whether they want to use it. If used, effect negated on utility targetting cardss
+
+    # I think its better to check for "when in hand" in the backend, as its technically not an action and 
+    # needs to be checked every time.
+    # We only need to check for 3 cards after all
+
+    # def checkRetaliation(target,actor):
+    #     pass #check whether target has a retaliation card and ask them whether they want to use it. If used, effect negated on utility targetting cardss
         
     def move(target, actor, card):
         target.append(card)
@@ -326,7 +332,7 @@ class spoiled_rations:
             zone = Action.choose_zone(target=next_player,actor=self.player)
 
             n = Action.chooseCard(target=next_player, zone=zone.name)
-            RetaliationPlayed = Action.checkRetaliation(target=next_player,actor=self.player)
+            # RetaliationPlayed = Action.checkRetaliation(target=next_player,actor=self.player)
             
             Action.remove(target=next_player,actor=self.player,card=zone[n])
             return True
@@ -431,7 +437,8 @@ class retaliation:
 
     def on_play(self,):
         Action.remove(target=self.player,actor=self.player, card=self)
-        # undo previous action
+        # undo previous action 
+        # "immune to the effect of the last card played"
 
     def on_effect(self,):
         pass
@@ -456,6 +463,8 @@ class reconnaissance:
         Action.add_effect(target=target, actor=self.player, card=self)
 
     def on_effect(self,):
+        # show your own hand
+        # somehow...
         pass
 
     def on_discard(self, actor):
@@ -464,3 +473,60 @@ class reconnaissance:
     def on_equip(self,):
         pass
 
+class bonus:
+    name = 'Bonus'
+    image = 'url/path'
+    type = ['utility', 'targetting']
+    health = 0
+    def __init__(self, hand):
+        self.player = hand
+
+    def on_play(self,):
+        Action.remove(target=self.player, actor=self.player, card=self)
+        while True:
+            player = self.player.game.get_next_player()
+            if player == self.player.player:
+                Action.drawCard(player)
+                Action.drawCard(player)
+                break
+            Action.drawCard(player)
+            Action.drawCard(player)
+            
+    def on_effect(self,):
+        pass
+
+    def on_discard(self, actor):
+        pass
+
+    def on_equip(self,):
+        pass
+
+class revolution:
+    name = 'Revolution'
+    image = 'url/path'
+    type = ['utility', 'targetting']
+    health = 0
+    def __init__(self, hand):
+        self.hand = hand
+
+    def on_play(self,):
+        Action.remove(target=self.hand, actor=self.hand, card=self)
+        all_cards = []
+        while True:
+            player = self.hand.game.get_next_player()
+            if player == self.hand.player:
+                all_cards += player.hand
+                all_cards += player.equipment_zone
+                break
+            all_cards += player.hand
+            all_cards += player.equipment_zone
+        
+            
+    def on_effect(self,):
+        pass
+
+    def on_discard(self, actor):
+        pass
+
+    def on_equip(self,):
+        pass
