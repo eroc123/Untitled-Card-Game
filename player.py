@@ -1,18 +1,17 @@
-## PLAYER ##
-
 import socket
 
+server = '127.0.0.1'
+port = 10000
+sock = socket.socket(socket.AF_INET, # Internet
+                         socket.SOCK_STREAM) 
+sock.connect((server, port))
+sock.sendall('join'.encode())
+print(sock.recv(1024))
+sock.close()
 
+sock = socket.socket(socket.AF_INET, # Internet
+                         socket.SOCK_STREAM) 
+sock.connect((server, port))
 while True:
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect(('127.0.0.1', 10000))
-    data = input()
-    if data == '':
-        s.close()
-        continue
-    s.send(data.encode())
-    data = s.recv(64).decode()
-    print(data)
-    s.close()
-    if data == 'exit ack':
-        break
+    data = sock.recv(1024)
+    if data: print(data)

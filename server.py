@@ -1,106 +1,66 @@
-import upnpy
+import socket
+import backend
 
-upnp = upnpy.UPnP()
+serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+serversocket.bind(('127.0.0.1', 22000))
+serversocket.listen(5) 
 
-# Discover UPnP devices on the network
-# Returns a list of devices e.g.: [Device <Broadcom ADSL Router>]
-devices = upnp.discover()
+print('waiting for players to join')
+num_of_players = 0
+waiting_players = []
+while True:
+    connection, address = serversocket.accept()
+    buf = connection.recv(1024)
+    if len(buf) > 0:
+        print(buf, address)
+        if buf == b'join':
+            num_of_players += 1
+            waiting_players.append(address)
+        connection.send(buf)
+        connection.close()
+        if num_of_players >= 2:
+            print('starting')
+            break
 
-# Select the IGD
-# alternatively you can select the device directly from the list
-# device = devices[0]
-device = upnp.get_igd()
+game = backend.GameLoop(num_of_players)
+id = 0
 
-# Get the services available for this device
-# Returns a list of services available for the device
-# e.g.: [<Service (WANPPPConnection) id="WANPPPConnection.1">, ...]
-device.get_services()
+for address, player in waiting_players, game.playerList:
+    id += 1
+    player.id = id
+    connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    connection.connect((address, 10000))
+    connection.send('{0:07b}'.format(id).encode())
+    connection.close()
 
-# We can now access a specific service on the device by its ID
-# The IDs for the services in this case contain illegal values so we can't access it by an attribute
-# If the service ID didn't contain illegal values we could access it via an attribute like this:
-# service = device.WANPPPConnection
 
-# We will access it like a dictionary instead:
-service = device['WANPPPConnection.1']
 
-# Get the actions available for the service
-# Returns a list of actions for the service:
-#   [<Action name="SetConnectionType">,
-#   <Action name="GetConnectionTypeInfo">,
-#   <Action name="RequestConnection">,
-#   <Action name="ForceTermination">,
-#   <Action name="GetStatusInfo">,
-#   <Action name="GetNATRSIPStatus">,
-#   <Action name="GetGenericPortMappingEntry">,
-#   <Action name="GetSpecificPortMappingEntry">,
-#   <Action name="AddPortMapping">,
-#   <Action name="DeletePortMapping">,
-#   <Action name="GetExternalIPAddress">]
-service.get_actions()
+# import logging
+# import socket
+# import sys
+# from utils import *
 
-# The action we are looking for is the "AddPortMapping" action
-# Lets see what arguments the action accepts
-# Use the get_input_arguments() or get_output_arguments() method of the action
-# for a list of input / output arguments.
-# Example output of the get_input_arguments method for the "AddPortMapping" action
-# Returns a dictionary:
-# [
-#     {
-#         "name": "NewRemoteHost",
-#         "data_type": "string",
-#         "allowed_value_list": []
-#     },
-#     {
-#         "name": "NewExternalPort",
-#         "data_type": "ui2",
-#         "allowed_value_list": []
-#     },
-#     {
-#         "name": "NewProtocol",
-#         "data_type": "string",
-#         "allowed_value_list": [
-#             "TCP",
-#             "UDP"
-#         ]
-#     },
-#     {
-#         "name": "NewInternalPort",
-#         "data_type": "ui2",
-#         "allowed_value_list": []
-#     },
-#     {
-#         "name": "NewInternalClient",
-#         "data_type": "string",
-#         "allowed_value_list": []
-#     },
-#     {
-#         "name": "NewEnabled",
-#         "data_type": "boolean",
-#         "allowed_value_list": []
-#     },
-#     {
-#         "name": "NewPortMappingDescription",
-#         "data_type": "string",
-#         "allowed_value_list": []
-#     },
-#     {
-#         "name": "NewLeaseDuration",
-#         "data_type": "ui4",
-#         "allowed_value_list": []
-#     }
-# ]
-service.AddPortMapping.get_input_arguments()
+# logger = logging.getLogger()
+# addresses = []
 
-# Finally, add the new port mapping to the IGD
-# This specific action returns an empty dict: {}
-service.AddPortMapping(
-    NewRemoteHost='',
-    NewExternalPort=80,
-    NewProtocol='TCP',
-    NewInternalPort=8000,
-    NewInternalClient='192.168.1.3',
-    NewEnabled=1,
-    NewPortMappingDescription='Test port mapping entry from UPnPy.',
-    NewLeaseDuration=0
-)
+
+# def main(host='0.0.0.0', port=9999):
+#     sock = socket.socket(socket.AF_INET, # Internet
+#                          socket.SOCK_DGRAM) # UDP
+#     sock.bind((host, port))
+#     while True:
+#         data, addr = sock.recvfrom(1024) # buffer size is 1024 bytes
+#         logger.info("connection from: %s", addr)
+#         addresses.append(addr)
+#         if len(addresses) >= 2:
+#             logger.info("server - send client info to: %s", addresses[0])
+#             sock.sendto(addr_to_msg(addresses[1]), addresses[0])
+#             logger.info("server - send client info to: %s", addresses[1])
+#             sock.sendto(addr_to_msg(addresses[0]), addresses[1])
+#             addresses.pop(1)
+#             addresses.pop(0)
+
+
+# if __name__ == '__main__':
+#     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+#     main(*addr_from_args(sys.argv))

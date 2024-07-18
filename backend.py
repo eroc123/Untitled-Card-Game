@@ -87,6 +87,7 @@ class DiscardedPile():
     pass
 
 class Player():
+    id = 0
     def __init__(self, deck, num_players):
         self.hand = Hand(deck) #handd of a player 
         self.effect_zone = EffectZone(deck)

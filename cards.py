@@ -9,13 +9,27 @@ def prettyprint(l):
     print()
 
 class Action:
+    '''All actions caused by cards on turn. This way any animation can also be implimented here
+    
+    List of all possible action:
+    - remove
+    - drawCard
+    - chooseCard
+    - chooseTarget
+    - choose_zone
+    - add_effect
+    - remove_effect
+    - skip_action
+    - move
+    - throw_error
+    '''
     def remove(target, actor, card, bypass_effect=False) -> None: #remove card from any players hand
         '''
         Removes a card from any player's hand
-        
-        Inputs:
+
+        - target : the target for the effect
+        - actor : the hand which causes the card removal
         - card : the card to remove
-        - actor : who causes the card removal
         - bypass_effect : if true, skip checking for preventive effects
         '''
         if bypass_effect:
@@ -27,13 +41,23 @@ class Action:
             card.on_discard(target)
             actor.game.discardPile.discardPile.append(card) #add card to discard pile
             target.hand.remove(card)
+
     def drawCard(actor):
+        '''Draw a card into the hand
+
+        - actor : the hand to draw the card too
+        '''
         actor.draw()
-    def chooseCard(actor, target, zone) -> int: 
+
+    def chooseCard(target, actor, zone) -> int: 
         '''
         Gets actor to choose a card from the zone
         
         returns n where n is the index of the choice
+
+        - target : the target for the effect
+        - actor : the hand which causes the card removal
+        - zone : the zone which the card is chosen from
         '''
         if zone == 'hand':
             print(["*" for _ in target.hand]) #hide target players deck, framework for later use by frontend
@@ -42,11 +66,21 @@ class Action:
             print(["*" for _ in target.equipment_zone]) #hide target players deck, framework for later use by frontend
             n = int(input(f'choose from equipment deck above : '))
         return n - 1
+    
     def chooseTarget(actor):
+        '''Gets 'actor' to choose a 'target' 
+        
+        - actor : the hand which is choosing the target
+        '''
         choice = input('Choose a target from these players: {}'.format(prettyprint(actor.game.players))) #choice is integer determining index of chosen target
         return int(choice)-1
 
     def choose_zone(target, actor):
+        '''Get player to choose a zone from 'target' 
+        
+        - target : the target from which the zone is piced
+        - actor : the hand which is choosing the zone
+        '''
         # idk let player choose a zone from a player
         zone = input("Choose a zone (hand/equipment)") #return as string
         if zone == 'hand':
@@ -54,13 +88,30 @@ class Action:
         elif zone == 'equipment':
             return target.equipment_zone
          
-    def add_effect(actor, target, card):
+    def add_effect(target, actor, card):
+        '''Add card's effect to the target
+        
+        - target : the target to which to add the effect to
+        - actor : the hand which caused the effect
+        - card : the effect card
+        '''
         target.effect_zone.append(card)
 
-    def remove_effect(actor, target, card):
+    def remove_effect(target, actor, card):
+        '''Add card's effect from the target
+        
+        - target : the target which to remove the effect card from
+        - actor : the hand which caused the removal
+        - card : the effect card
+        '''
         target.effect_zone.remove(card)
 
-    def skip_action(actor, target):
+    def skip_action(target, actor):
+        '''Skip target's action
+        
+        - target : the hand who's turn is to be skipped
+        - actor : the hand who caused the turn skip
+        '''
         # skip player's next turn
         pass
 
@@ -72,10 +123,12 @@ class Action:
     #     pass #check whether target has a retaliation card and ask them whether they want to use it. If used, effect negated on utility targetting cardss
         
     def move(target, actor, card):
+        '''Move card from actor's hand to target's hand'''
         target.append(card)
         actor.remove(card)
 
     def throw_error(target, action, card, message):
+        '''Error handling if anything goes wrong'''
         print(message)
         if action == 'on_play':
             card.on_play()
@@ -219,7 +272,6 @@ class arrow_ice:
     def on_equip(self,):
         pass
 
-
 class arrow_electric:
     name = 'Electric Arrow'
     image = 'url/path'
@@ -252,13 +304,6 @@ class arrow_electric:
     def on_equip(self,):
         pass
 
-class arrow_electric_health(arrow_electric):
-    image = 'url/path'
-    health = 1
-    def __init__(self, hand, next):
-        self.hand = hand
-        next_player = next
-
 class arrow_wind:
     name = 'Wind Arrow'
     image = 'url/path'
@@ -283,8 +328,6 @@ class arrow_wind:
     def on_equip(self,):
         pass
 
-
-
 class extra_rations:
     name = 'Extra Rations'
     image = 'url/path'
@@ -307,7 +350,6 @@ class extra_rations:
 
     def on_equip(self,):
         pass
-
 
 class spoiled_rations:
     name = 'Spoiled Rations'
@@ -348,7 +390,6 @@ class spoiled_rations:
     def on_equip(self,):
         pass
 
-
 class spied_sucessfully:
     name = 'Spied sucessfully'
     image = 'url/path'
@@ -388,28 +429,6 @@ class spying_failed:
     name = 'Spying Failed'
     image = 'url/path'
     type = ['utility', 'targetting']
-    health = 0
-    def __init__(self, hand):
-        self.player = hand
-
-    def on_play(self,):
-        Action.remove(target=self.player,actor=self.player, card=self)
-    
-    def on_effect(self,):
-        pass
-
-    def on_discard(self, actor):
-        Action.drawCard(actor=self.player)
-        Action.drawCard(actor=self.player)
-
-    def on_equip(self,):
-        pass
-
-
-class spying_failed:
-    name = 'Spying Failed'
-    image = 'url/path'
-    type = ['utility']
     health = 0
     def __init__(self, hand):
         self.player = hand
